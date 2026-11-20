@@ -334,6 +334,12 @@ class RTDETRTransformerv2(nn.Module):
         self.cross_attn_method = cross_attn_method
         self.query_select_method = query_select_method
 
+        # Runtime-only controls. Defaults leave the upstream path in use.
+        self.fixed_query_budget = None
+        self.adaptive_query_thresholds = None
+        self.collect_query_rank_scores = False
+        self.query_rank_scores = None
+
         # backbone feature projection
         self._build_input_proj_layer(feat_channels)
 
@@ -504,7 +510,35 @@ class RTDETRTransformerv2(nn.Module):
         enc_topk_bboxes_list, enc_topk_logits_list = [], []
         enc_topk_memory, enc_topk_logits, enc_topk_bbox_unact = \
             self._select_topk(output_memory, enc_outputs_logits, enc_outputs_coord_unact, self.num_queries)
-            
+
+        if self.query_rank_scores is not None:
+            self.query_rank_scores = None
+        if (not self.training
+                and (self.fixed_query_budget is not None
+                     or self.adaptive_query_thresholds is not None
+                     or self.collect_query_rank_scores)
+                and memory.shape[0] == 1
+                and self.num_queries == 300
+                and self.query_select_method == 'default'
+                and not self.learn_query_content
+                and denoising_bbox_unact is None):
+            budget = self.fixed_query_budget
+            if self.adaptive_query_thresholds is not None or self.collect_query_rank_scores:
+                # _select_topk ranks locations by their best class logit.
+                rank_scores = enc_topk_logits[0, 100:201:100].amax(dim=-1).sigmoid()
+                if self.collect_query_rank_scores:
+                    self.query_rank_scores = rank_scores.detach()
+                if self.adaptive_query_thresholds is not None:
+                    threshold_a, threshold_b = self.adaptive_query_thresholds
+                    s101, s201 = rank_scores.unbind()
+                    budget = torch.where(s101 <= threshold_a, 100,
+                                         torch.where(s201 <= threshold_b, 200, 300)).item()
+
+            if budget is not None and budget < self.num_queries:
+                enc_topk_memory = enc_topk_memory[:, :budget]
+                enc_topk_logits = enc_topk_logits[:, :budget]
+                enc_topk_bbox_unact = enc_topk_bbox_unact[:, :budget]
+
         if self.training:
             enc_topk_bboxes = F.sigmoid(enc_topk_bbox_unact)
             enc_topk_bboxes_list.append(enc_topk_bboxes)
