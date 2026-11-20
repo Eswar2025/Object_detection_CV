@@ -1,0 +1,44 @@
+# Python environments, builds and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+build/
+dist/
+*.egg-info/
+
+# Local settings and credentials
+.env
+.env.*
+*.env
+
+# Datasets and downloaded images
+data/
+datasets/
+# The upstream project also uses these names for importable code and configs.
+!/RT-DETR/rtdetr_pytorch/src/data/
+!/RT-DETR/rtdetrv2_pytorch/src/data/
+!/RT-DETR/rtdetr_paddle/ppdet/data/
+!/RT-DETR/rtdetr_paddle/configs/datasets/
+
+# Weights and exported models
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.safetensors
+*.engine
+*.pdparams
+
+# Training, profiling and experiment output
+*.log
+logs/
+output/
+outputs/
+runs/
+wandb/
+events.out.tfevents.*
