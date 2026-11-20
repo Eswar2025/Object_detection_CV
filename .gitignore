@@ -42,3 +42,11 @@ outputs/
 runs/
 wandb/
 events.out.tfevents.*
+
+# Local class materials and project notes
+/Friends_project_list/
+[Ss]creenshot*.[pP][nN][gG]
+*.[pP][dD][fF]
+/choices.md
+/final_plan.md
+/explanation.md
